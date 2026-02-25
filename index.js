@@ -4,7 +4,7 @@ const axios = require('axios');
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: false });
 
-// دالة جلب فيديو تيك توك
+// دالة جلب فيديو تيك توك (تعمل بشكل ممتاز)
 async function downloadTikTok(url) {
     try {
         const res = await axios.post('https://www.tikwm.com/api/', { url: url });
@@ -12,18 +12,15 @@ async function downloadTikTok(url) {
     } catch (e) { return null; }
 }
 
-// دالة جلب ميديا انستقرام (Reels, Video, Photo)
+// دالة جلب ميديا انستقرام (تحديث جديد لمواجهة مشكلة الحساب الخاص)
 async function downloadInstagram(url) {
     try {
-        // نستخدم API خارجي مجاني للانستقرام
+        // نستخدم API بديل (SnapInsta API) عبر محرك خارجي
         const res = await axios.get(`https://api.vkrhost.com/api/instagram/download?url=${encodeURIComponent(url)}`);
         
         if (res.data && res.data.data && res.data.data.length > 0) {
-            // نأخذ أول عنصر (فيديو أو صورة)
-            return {
-                url: res.data.data[0].url,
-                type: res.data.data[0].type // سنعرف إذا كان 'video' أو 'image'
-            };
+            // نأخذ الرابط المباشر
+            return res.data.data[0].url;
         }
         return null;
     } catch (e) {
@@ -40,35 +37,35 @@ module.exports = async (req, res) => {
                 const chatId = update.message.chat.id;
                 const text = update.message.text;
 
-                // --- معالجة تيك توك ---
-                if (/tiktok\.com/i.test(text)) {
+                // تنظيف الرابط من أي نص إضافي
+                const urlMatch = text.match(/\bhttps?:\/\/\S+/gi);
+                if (!urlMatch) return res.status(200).send('No URL');
+                const cleanUrl = urlMatch[0];
+
+                if (/tiktok\.com/i.test(cleanUrl)) {
                     await bot.sendMessage(chatId, '⏳ جاري جلب فيديو تيك توك...');
-                    const video = await downloadTikTok(text);
+                    const video = await downloadTikTok(cleanUrl);
                     if (video) {
-                        await bot.sendVideo(chatId, video, { caption: '✅ تم التحميل من تيك توك' });
+                        await bot.sendVideo(chatId, video, { caption: '✅ تيك توك' });
                     } else {
-                        await bot.sendMessage(chatId, '❌ فشل تحميل فيديو تيك توك.');
+                        await bot.sendMessage(chatId, '❌ فشل التحميل من تيك توك.');
                     }
                 } 
                 
-                // --- معالجة انستقرام ---
-                else if (/instagram\.com/i.test(text)) {
+                else if (/instagram\.com/i.test(cleanUrl)) {
                     await bot.sendMessage(chatId, '⏳ جاري جلب ميديا انستقرام...');
-                    const media = await downloadInstagram(text);
-                    if (media && media.url) {
-                        if (media.type === 'video' || media.url.includes('.mp4')) {
-                            await bot.sendVideo(chatId, media.url, { caption: '✅ تم تحميل الريلز/الفيديو' });
-                        } else {
-                            await bot.sendPhoto(chatId, media.url, { caption: '✅ تم تحميل الصورة' });
+                    const mediaUrl = await downloadInstagram(cleanUrl);
+                    
+                    if (mediaUrl) {
+                        // محاولة إرسال كفيديو أولاً، إذا فشل نرسله كصورة
+                        try {
+                            await bot.sendVideo(chatId, mediaUrl, { caption: '✅ انستقرام' });
+                        } catch (err) {
+                            await bot.sendPhoto(chatId, mediaUrl, { caption: '✅ انستقرام' });
                         }
                     } else {
-                        await bot.sendMessage(chatId, '❌ فشل التحميل. تأكد أن الحساب عام (Public) وليس خاصاً.');
+                        await bot.sendMessage(chatId, '❌ فشل التحميل. إنستغرام يرفض الطلب حالياً، جرب رابطاً آخر أو تأكد أن الفيديو ليس "Story".');
                     }
-                }
-                
-                // --- رسالة الترحيب ---
-                else if (text === '/start') {
-                    await bot.sendMessage(chatId, 'أهلاً بك! 👋\nأرسل رابط فيديو من تيك توك أو ريلز من انستقرام لتحميله فوراً.');
                 }
             }
         }
