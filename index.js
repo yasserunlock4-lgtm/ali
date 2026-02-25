@@ -1,17 +1,35 @@
 const TelegramBot = require('node-telegram-bot-api');
 
-// استبدل 'YOUR_TELEGRAM_BOT_TOKEN' بالتوكن الخاص ببوتك
-const token = '8418864078:AAHfUHd5gkfxiUJNP6Bub66zsvBSFFDzbfM';
+// قراءة التوكن من متغيرات البيئة
+const token = process.env.BOT_TOKEN;
+const vercelUrl = `https://ali-bice.vercel.app`; // رابط Vercel الخاص بك
 
-// إنشاء البوت باستخدام وضع "polling" لجلب التحديثات الجديدة
-const bot = new TelegramBot(token, {polling: true});
+const bot = new TelegramBot(token );
 
-// هذا الأمر يستمع لأي نوع من الرسائل
-bot.on('message', (msg) => {
-  const chatId = msg.chat.id;
+// هذا هو الجزء الذي سيعالج الطلبات القادمة من Vercel
+module.exports = async (req, res) => {
+  try {
+    // استخراج التحديث من الطلب
+    const update = req.body;
 
-  // إرسال رسالة إلى المستخدم تفيد باستلام رسالته
-  bot.sendMessage(chatId, 'تم استلام رسالتك');
-});
+    // التأكد من وجود رسالة نصية
+    if (update.message && update.message.text) {
+      const chatId = update.message.chat.id;
+      const messageText = update.message.text;
 
-console.log('البوت قيد التشغيل...');
+      // الرد على المستخدم
+      await bot.sendMessage(chatId, `لقد أرسلت: ${messageText}`);
+    }
+
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('Error processing update:', error);
+    res.status(500).send('Error');
+  }
+};
+
+// هذا الجزء ضروري فقط للإعداد الأولي للـ Webhook (يمكن إبقاؤه)
+// ملاحظة: لقد قمنا بتشغيل هذا الرابط يدويًا بالفعل
+if (process.env.VERCEL_ENV === 'development') {
+  bot.setWebHook(`${vercelUrl}/api/bot`);
+}
