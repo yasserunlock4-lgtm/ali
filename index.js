@@ -15,15 +15,18 @@ if (!token) {
       // نستخدم API خارجية بسيطة للتحميل
       const response = await axios.get(`https://api.douyin.wtf/api?url=${url}` );
       
-      // التأكد من أن الـ API أعادت رابط فيديو
       if (response.data && response.data.video_data && response.data.video_data.nwm_video_url) {
         return response.data.video_data.nwm_video_url;
       } else {
-        throw new Error('لم يتم العثور على رابط فيديو بدون علامة مائية.');
+        // محاولة استخدام رابط آخر إذا فشل الأول
+        if (response.data && response.data.video_data && response.data.video_data.wm_video_url) {
+            return response.data.video_data.wm_video_url;
+        }
+        throw new Error('لم يتم العثور على رابط فيديو صالح.');
       }
     } catch (error) {
       console.error("TikTok download error:", error.message);
-      return null; // إرجاع null في حالة الفشل
+      return null;
     }
   }
 
@@ -37,30 +40,29 @@ if (!token) {
 
         // التحقق مما إذا كانت الرسالة تحتوي على رابط تيك توك
         if (messageText.includes('tiktok.com')) {
-          // إرسال رسالة "جاري المعالجة"
           await bot.sendMessage(chatId, '🔍 جاري البحث عن الفيديو، يرجى الانتظار...');
-
           const videoUrl = await downloadTikTokVideo(messageText);
 
           if (videoUrl) {
-            // إذا نجح التحميل، أرسل الفيديو
-            await bot.sendVideo(chatId, videoUrl, { caption: '✅ تم التحميل بنجاح!' });
+            await bot.sendVideo(chatId, videoUrl, { caption: '✅ تم التحميل بنجاح!\n\n بواسطة بوت @YourBotUsername' }); // يمكنك تغيير اسم المستخدم هنا
           } else {
-            // إذا فشل التحميل، أرسل رسالة خطأ
             await bot.sendMessage(chatId, '❌ عذراً، لم أتمكن من تحميل هذا الفيديو. قد يكون الرابط غير صحيح أو الفيديو خاص.');
           }
-        } else if (messageText.includes('instagram.com')) {
+        } 
+        // التحقق من رابط انستغرام بشكل منفصل
+        else if (messageText.includes('instagram.com')) {
             await bot.sendMessage(chatId, 'ميزة التحميل من انستغرام قيد التطوير حالياً. 👨‍💻');
         }
+        // إذا لم تكن الرسالة رابط تيك توك أو انستغرام
         else {
-          // رسالة ترحيبية إذا لم يكن الرابط من تيك توك
-          await bot.sendMessage(chatId, 'أهلاً بك! 👋\n\nأرسل لي رابط فيديو من تيك توك لتحميله.');
+          await bot.sendMessage(chatId, 'أهلاً بك! 👋\n\nأرسل لي رابط فيديو من تيك توك أو إنستغرام لتحميله.');
         }
       }
 
       res.status(200).send('OK');
     } catch (error) {
       console.error('Error processing update:', error.message);
+      // نرسل استجابة ناجحة لتجنب تكرار تليجرام للطلب
       res.status(200).send('Error processing update');
     }
   };
