@@ -2,69 +2,78 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 const token = process.env.BOT_TOKEN;
-
-// إنشاء نسخة البوت بدون Polling ليتناسب مع Vercel
 const bot = new TelegramBot(token, { polling: false });
 
-// دالة لجلب الفيديو من TikTok باستخدام TikWM API (أكثر استقراراً)
-async function downloadTikTokVideo(url) {
+// دالة جلب فيديو تيك توك
+async function downloadTikTok(url) {
     try {
-        const response = await axios.post('https://www.tikwm.com/api/', {
-            url: url
-        });
+        const res = await axios.post('https://www.tikwm.com/api/', { url: url });
+        return res.data?.data?.play || null;
+    } catch (e) { return null; }
+}
 
-        if (response.data && response.data.data) {
-            // نفضل رابط الفيديو بدون علامة مائية (play)
-            return response.data.data.play;
+// دالة جلب ميديا انستقرام (Reels, Video, Photo)
+async function downloadInstagram(url) {
+    try {
+        // نستخدم API خارجي مجاني للانستقرام
+        const res = await axios.get(`https://api.vkrhost.com/api/instagram/download?url=${encodeURIComponent(url)}`);
+        
+        if (res.data && res.data.data && res.data.data.length > 0) {
+            // نأخذ أول عنصر (فيديو أو صورة)
+            return {
+                url: res.data.data[0].url,
+                type: res.data.data[0].type // سنعرف إذا كان 'video' أو 'image'
+            };
         }
         return null;
-    } catch (error) {
-        console.error("TikTok API Error:", error.message);
+    } catch (e) {
+        console.error("Instagram Error:", e.message);
         return null;
     }
 }
 
-// الدالة الأساسية لمعالجة الطلبات من Vercel
 module.exports = async (req, res) => {
     try {
-        // التأكد من أن الطلب قادم من تليجرام (POST)
         if (req.method === 'POST') {
             const update = req.body;
-
             if (update && update.message && update.message.text) {
                 const chatId = update.message.chat.id;
-                const messageText = update.message.text;
+                const text = update.message.text;
 
-                // تعبيرات نمطية للروابط
-                const tiktokRegex = /tiktok\.com/i;
-                const instagramRegex = /instagram\.com/i;
-
-                if (tiktokRegex.test(messageText)) {
-                    await bot.sendMessage(chatId, '🔍 جاري معالجة رابط تيك توك، انتظر قليلاً...');
-
-                    const videoUrl = await downloadTikTokVideo(messageText);
-
-                    if (videoUrl) {
-                        // إرسال الفيديو مباشرة عبر الرابط لتجنب استهلاك موارد السيرفر
-                        await bot.sendVideo(chatId, videoUrl, { 
-                            caption: '✅ تم التحميل بواسطة بوتك الخاص!',
-                            reply_to_message_id: update.message.message_id 
-                        });
+                // --- معالجة تيك توك ---
+                if (/tiktok\.com/i.test(text)) {
+                    await bot.sendMessage(chatId, '⏳ جاري جلب فيديو تيك توك...');
+                    const video = await downloadTikTok(text);
+                    if (video) {
+                        await bot.sendVideo(chatId, video, { caption: '✅ تم التحميل من تيك توك' });
                     } else {
-                        await bot.sendMessage(chatId, '❌ عذراً، فشل استخراج الفيديو. تأكد أن الحساب ليس خاصاً (Private).');
+                        await bot.sendMessage(chatId, '❌ فشل تحميل فيديو تيك توك.');
                     }
-
-                } else if (instagramRegex.test(messageText)) {
-                    await bot.sendMessage(chatId, '🚀 ميزة انستغرام سيتم إضافتها قريباً في التحديث القادم.');
-                } else if (messageText === '/start') {
-                    await bot.sendMessage(chatId, 'أهلاً بك! 👋\nأرسل لي رابط فيديو من تيك توك وسأقوم بتحميله لك بدون علامة مائية.');
+                } 
+                
+                // --- معالجة انستقرام ---
+                else if (/instagram\.com/i.test(text)) {
+                    await bot.sendMessage(chatId, '⏳ جاري جلب ميديا انستقرام...');
+                    const media = await downloadInstagram(text);
+                    if (media && media.url) {
+                        if (media.type === 'video' || media.url.includes('.mp4')) {
+                            await bot.sendVideo(chatId, media.url, { caption: '✅ تم تحميل الريلز/الفيديو' });
+                        } else {
+                            await bot.sendPhoto(chatId, media.url, { caption: '✅ تم تحميل الصورة' });
+                        }
+                    } else {
+                        await bot.sendMessage(chatId, '❌ فشل التحميل. تأكد أن الحساب عام (Public) وليس خاصاً.');
+                    }
+                }
+                
+                // --- رسالة الترحيب ---
+                else if (text === '/start') {
+                    await bot.sendMessage(chatId, 'أهلاً بك! 👋\nأرسل رابط فيديو من تيك توك أو ريلز من انستقرام لتحميله فوراً.');
                 }
             }
         }
     } catch (error) {
-        console.error('General Error:', error.message);
+        console.error('Error:', error.message);
     }
-
-    // يجب دائماً إرسال استجابة 200 لتليجرام حتى لا يكرر إرسال الرسالة
     res.status(200).send('OK');
 };
