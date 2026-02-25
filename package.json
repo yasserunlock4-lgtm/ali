@@ -1,0 +1,19 @@
+{
+  "name": "telegram-downloader-bot",
+  "version": "1.0.0",
+  "description": "A Telegram bot to download videos from TikTok and Instagram.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "downloader"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.67.0"
+  }
+}
