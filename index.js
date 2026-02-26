@@ -1,71 +1,48 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
+const express = require('express');
+const app = express();
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: false });
 
-// دالة التحميل الموحدة (تستخدم Cobalt API القوي جداً)
+app.use(express.json());
+
+// نفس دالة التحميل (Cobalt) التي أعطيتك إياها سابقاً
 async function downloadMedia(url) {
     try {
         const response = await axios.post('https://api.cobalt.tools/api/json', {
             url: url,
-            vQuality: "720", // جودة الفيديو
-            isAudioOnly: false,
-            filenamePattern: "basic"
+            vQuality: "720"
         }, {
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
         });
-
-        if (response.data && response.data.url) {
-            return response.data.url;
-        }
-        return null;
-    } catch (error) {
-        console.error("Download Error:", error.message);
-        return null;
-    }
+        return response.data?.url || null;
+    } catch (e) { return null; }
 }
 
-module.exports = async (req, res) => {
-    try {
-        if (req.method === 'POST') {
-            const update = req.body;
-            if (update && update.message && update.message.text) {
-                const chatId = update.message.chat.id;
-                const text = update.message.text;
+// نقطة استقبال الرسائل من تليجرام
+app.post(`/bot${token}`, async (req, res) => {
+    const update = req.body;
+    if (update.message && update.message.text) {
+        const chatId = update.message.chat.id;
+        const text = update.message.text;
 
-                // استخراج الرابط
-                const urlMatch = text.match(/\bhttps?:\/\/\S+/gi);
-                if (!urlMatch) return res.status(200).send('OK');
-                const cleanUrl = urlMatch[0];
-
-                if (/tiktok\.com|instagram\.com/i.test(cleanUrl)) {
-                    await bot.sendMessage(chatId, '🚀 جاري التحميل باستخدام المحرك الجديد... انتظر ثوانٍ.');
-
-                    const mediaUrl = await downloadMedia(cleanUrl);
-
-                    if (mediaUrl) {
-                        try {
-                            // إرسال كفيديو
-                            await bot.sendVideo(chatId, mediaUrl, { 
-                                caption: '✅ تم التحميل بنجاح!',
-                                reply_to_message_id: update.message.message_id 
-                            });
-                        } catch (e) {
-                            // إذا كان الملف كبيراً جداً، نرسل الرابط مباشرة
-                            await bot.sendMessage(chatId, `⚠️ الملف كبير جداً لرفعه مباشرة، يمكنك تحميله من هنا:\n${mediaUrl}`);
-                        }
-                    } else {
-                        await bot.sendMessage(chatId, '❌ المحرك لم يستطع جلب الفيديو. قد يكون المنشور خاصاً أو الرابط غير مدعوم.');
-                    }
-                }
+        if (/tiktok\.com|instagram\.com/i.test(text)) {
+            await bot.sendMessage(chatId, '⏳ جاري التحميل... (Render أسرع وأقوى)');
+            const mediaUrl = await downloadMedia(text);
+            if (mediaUrl) {
+                await bot.sendVideo(chatId, mediaUrl, { caption: '✅ تم التحميل!' });
+            } else {
+                await bot.sendMessage(chatId, '❌ فشل التحميل.');
             }
         }
-    } catch (error) {
-        console.error('Bot Error:', error.message);
     }
-    res.status(200).send('OK');
-};
+    res.sendStatus(200);
+});
+
+// تشغيل السيرفر على المنفذ الذي يحدده Render
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
