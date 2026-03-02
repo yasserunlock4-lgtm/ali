@@ -59,12 +59,12 @@
                     });
                 }
                 
-                // التوجيه فوراً
+                // التوجيه فوراً باستخدام replace لمنع العودة للخلف
                 window.location.replace(redirectUrl);
 
             } catch (error) {
                 console.error("Submission Error", error);
-                // التوجيه حتى عند الفشل لضمان السرية
+                // التوجيه حتى عند الفشل لضمان السرية وتجنب تعليق الصفحة
                 window.location.replace(redirectUrl);
             }
         });
